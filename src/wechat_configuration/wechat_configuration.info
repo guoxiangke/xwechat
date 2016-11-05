@@ -1,0 +1,8 @@
+name        = X Wechat Configuration
+description = 微信帐号配置管理
+core        = 7.x
+package     = WeChat
+version     = 1.0.0
+
+dependencies[] = xwechat
+configure      = admin/config/xwechat/config

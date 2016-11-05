@@ -1,0 +1,8 @@
+name        = X Wechat User
+description = 微信关注用户管理
+core        = 7.x
+package     = WeChat
+version     = 1.0.0
+
+dependencies[] = xwechat
+dependencies[] = wechat_configuration

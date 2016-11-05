@@ -1,0 +1,51 @@
+<?php
+
+/**
+ * @file
+ *
+ * wechat_test
+ * 通过注册Fallbacks实现默认回调
+ */
+
+use Pyramid\Component\WeChat\WeChat;
+use Pyramid\Component\WeChat\Request;
+use Pyramid\Component\WeChat\Response;
+
+/**
+ * HOOK_wechat_ALTER
+ */
+function wechat_test_wechat_alter($wechat) {
+    $wechat->registerEvents('WeChatDefaultFallback');
+}
+
+/**
+ * HOOK_wechatcorp_ALTER
+ */
+function wechat_test_wechatcorp_alter($wechat) {
+    $wechat->registerEvents('WeChatDefaultFallback');
+}
+
+/**
+ * default fallback class
+ */
+class WeChatDefaultFallback {
+    
+    public static function __callStatic($method, $param) {
+        $request = $param[0];
+        if (!in_array($method, array('text','image','voice','video','shortvideo','location','link'))) {
+            return '';
+        }
+        return new Response(array(
+            'ToUserName'    => $request->getParameter('FromUserName'),
+            'FromUserName'  => $request->getParameter('ToUserName'),
+            'MsgType'       => 'text',
+            'Content'       => t('Server is under maintenance'),
+            'CreateTime'    => time(),
+        ));
+    }
+    
+    public function __call($method, $param) {
+        return self::__callStatic($method, $param);
+    }
+
+}

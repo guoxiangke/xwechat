@@ -1,0 +1,8 @@
+name        = X Wechat Menu
+description = 微信底部菜单管理
+core        = 7.x
+package     = WeChat
+version     = 1.0.0
+
+dependencies[] = xwechat
+dependencies[] = wechat_configuration

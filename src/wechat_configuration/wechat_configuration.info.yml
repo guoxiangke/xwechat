@@ -1,0 +1,9 @@
+name: X Wechat Configuration
+type: module
+description: 微信帐号配置管理
+package: WeChat
+version: 1.0.0
+core: 8.x
+dependencies:
+    - xwechat
+configure: admin/config/xwechat/config

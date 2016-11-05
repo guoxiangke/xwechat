@@ -1,0 +1,9 @@
+name: X Wechat Menu
+type: module
+description: 微信底部菜单管理
+package: WeChat
+version: 1.0.0
+core: 8.x
+dependencies:
+    - xwechat
+    - wechat_configuration

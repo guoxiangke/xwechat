@@ -1,0 +1,285 @@
+<?php
+
+/**
+ * @file
+ *
+ * wechat_configuration
+ */
+
+use Pyramid\Component\WeChat\WeChat;
+use Pyramid\Component\WeChat\Request;
+use Pyramid\Component\WeChat\Response;
+
+/**
+ * HOOK_menu
+ */
+function wechat_configuration_menu() {
+    $items['admin/config/xwechat/config'] = array(
+        'title'             => 'WeChat Configuration',
+        'description'       => t('WeChat Configuration'),
+        'page callback'     => 'drupal_get_form',
+        'page arguments'    => array('wechat_configuration_list'),
+        'access arguments'  => array('administration wechat configuration'),
+        'weight'            => 0,
+    );
+    $items['admin/config/xwechat/config/add'] = array(
+        'title'             => 'Add a WeChat Configuration',
+        'page callback'     => 'wechat_configuration_add',
+        'access arguments'  => array('administration wechat configuration'),
+    );
+    $items['admin/config/xwechat/config/%xwechat_configuration/edit'] = array(
+        'title'             => 'Edit a WeChat Configuration',
+        'page callback'     => 'wechat_configuration_edit',
+        'page arguments'    => array(4),
+        'access arguments'  => array('administration wechat configuration'),
+    );
+
+    return $items;
+}
+
+/**
+ * HOOK_permission
+ */
+function wechat_configuration_permission() {
+    $permissions['administration wechat configuration'] = array(
+        'title'           => t('Administration WeChat Configuration'),
+        'restrict access' => true,
+    );
+
+    return $permissions;
+}
+
+/**
+ * HOOK_menu_local_tasks_alter
+ */
+function wechat_configuration_menu_local_tasks_alter(&$data, $router_item, $root_path) {
+    if ($root_path == 'admin/config/xwechat/config') {
+        $item = menu_get_item('admin/config/xwechat/config/add');
+        if ($item['access']) {
+            $data['actions']['output'][] = array(
+                '#theme' => 'menu_local_action',
+                '#link' => $item,
+            );
+        }
+    }
+}
+
+/**
+ * @see wechat_configuration_menu
+ * @newapi HOOK_wechat_operation($operation, $wechatconfig)
+ * 配置列表的页面
+ */
+function wechat_configuration_list($form, $form_state) {
+    static $bundles = array('wechat' => '公众号', 'wechatcorp' => '企业号');
+    $query = db_select('xwechat_configuration', 'c')->extend(Pyramid\Drupal\Pager::compat());
+    $data  = $query->fields('c')->limit(16)->execute()->fetchAll();
+    $head  = array(
+        'wid'       => t('Wid'),
+        'qrcode'    => t('Qrcode'),
+        'name'      => t('Name'),
+        'config'    => t('Config'),
+        'bundle'    => t('Bundle'),
+        'updated'   => t('Updated'),
+        'operate'   => array('data' => t('Operations')),
+    );
+    foreach ($data as $v) {
+        $links = module_invoke_all('wechat_operation', array(), $v);
+        $rows[$v->wid] = array(
+            'wid'       => "<strong>{$v->wid}</strong>",
+            'qrcode'    => $v->username ? "<img style='max-width:100px' src='http://open.weixin.qq.com/qr/code/?username={$v->username}' />" : '',
+            'name'      => $v->name,
+            'config'    => 'APPID: <strong>' . $v->appid . ' </strong>'
+                          .'<br>TOKEN: <strong>' . wechat_configuration_mask($v->token) . ' </strong>'
+                          .'<br>SECRET: <strong>' . wechat_configuration_mask($v->appsecret) . '</strong>'
+                          . ($v->aeskey ? '<br>AESKEY: <strong>' . wechat_configuration_mask($v->aeskey) . '</strong>' : '')
+                          . ($v->bundle=='wechatcorp' ? '<br>AGENTID: <strong>' . $v->agentid . '</strong>' : ''),
+            'bundle'    => isset($bundles[$v->bundle]) ? $bundles[$v->bundle] : $v->bundle,
+            'updated'   => format_date($v->updated, 'short'),
+            'operate'   => array(
+                'data' => array(
+                    '#theme' => 'links__node_operations',
+                    '#links' => $links,
+                    '#attributes' => array('class' => array('links', 'inline')),
+                ),
+            ),
+        );
+    }
+    $form['wechatconfigs'] = array(
+        '#type'   => 'item',
+        '#markup' => '<div class="messages warning" style="background-image:none;">'
+                     .'公众号回调地址: <strong>'.rtrim(url('xwechat/',array('absolute'=>true)),'/').'/<span class="form-required">WID</span></strong> &nbsp;&nbsp;&nbsp;'
+                     .'企业号回调地址: <strong>'.rtrim(url('xwechatcorp/',array('absolute'=>true)),'/') . '/<span class="form-required">WID</span></strong> '
+                     .'</div>'
+                     . theme('table', array('header' => $head, 'rows' => $rows)),
+    );
+    $form['pager'] = array('#markup' => theme('pager'));
+    return $form;
+}
+
+/**
+ * HOOK_wechat_operation
+ * @see wechat_configuration_list
+ */
+function wechat_configuration_wechat_operation($links = array(), $config) {
+    $links['edit'] = array(
+        'title' => t('Edit'),
+        'href'  => 'admin/config/xwechat/config/' . $config->wid . '/edit',
+    );
+    
+    return $links;
+}
+
+/**
+ * @see wechat_configuration_menu
+ * 新增一条配置的页面
+ */
+function wechat_configuration_add() {
+    $user = Pyramid\Drupal\User::compat();
+    $wechatconfig = (object) array(
+        'name'      => '',
+        'username'  => '',
+        'appid'     => '',
+        'token'     => '',
+        'appsecret' => '',
+        'aeskey'    => '',
+        'status'    => 1,
+        'uid'       => $user->id(),
+    );
+    drupal_set_title(t('Add a WeChat Configuration'));
+    return drupal_get_form('wechat_configuration_form', $wechatconfig);
+}
+
+/**
+ * @see wechat_configuration_menu
+ * 修改一条配置的页面
+ */
+function wechat_configuration_edit($wechatconfig) {
+    drupal_set_title(t('<em>Edit Configuration: </em> @title', array('@title'=>$wechatconfig->name)), PASS_THROUGH);
+    return drupal_get_form('wechat_configuration_form', $wechatconfig);
+}
+
+/**
+ * @see wechat_configuration_add
+ * 增加修改配置的表单
+ */
+function wechat_configuration_form($form, &$form_state, $wechatconfig) {
+    if (!isset($form_state['wechatconfig'])) {
+        $form_state['wechatconfig'] = $wechatconfig;
+    }
+    $form['#wechatconfig'] = $wechatconfig;
+    $form['#attributes']['class'][] = 'wechat-configuration-form';
+    $form['baseinfo'] = array(
+        '#type'         => 'fieldset',
+        '#title'        => t('WeChat Base Configuration'),
+        '#collapsible'  => false,
+        '#collapsed'    => false,
+        '#weight'       => 90,
+        '#tree'         => true,
+    );
+    $form['baseinfo']['name'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('Name'),
+        '#required'       => false,
+        '#default_value'  => $wechatconfig->name,
+        '#maxlength'      => 255,
+        '#weight'         => -10,
+    );
+    $form['baseinfo']['username'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('UserName'),
+        '#required'       => false,
+        '#default_value'  => $wechatconfig->username,
+        '#maxlength'      => 128,
+    );
+    $form['baseinfo']['appid'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('AppID'),
+        '#required'       => true,
+        '#default_value'  => $wechatconfig->appid,
+        '#maxlength'      => 128,
+    );
+    $form['baseinfo']['token'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('Token'),
+        '#required'       => true,
+        '#default_value'  => $wechatconfig->token,
+        '#maxlength'      => 128,
+    );
+    $form['baseinfo']['appsecret'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('AppSecret'),
+        '#required'       => true,
+        '#default_value'  => $wechatconfig->appsecret,
+        '#maxlength'      => 128,
+    );
+    $form['baseinfo']['aeskey'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('Aeskey'),
+        '#required'       => false,
+        '#default_value'  => $wechatconfig->aeskey,
+        '#maxlength'      => 128,
+    );
+    $form['baseinfo']['bundle'] = array(
+        '#type'           => 'select',
+        '#title'          => t('Bundle'),
+        '#default_value'  => !empty($wechatconfig->bundle) ? $wechatconfig->bundle : 'wechat',
+        '#options'        => array('wechat'=>'公众号', 'wechatcorp' => '企业号'),
+    );
+    $form['baseinfo']['agentid'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('AgentID'),
+        '#required'       => false,
+        '#default_value'  => !empty($wechatconfig->agentid) ? $wechatconfig->agentid : '0',
+        '#maxlength'      => 255,
+    );
+    
+    $form['actions'] = array('#type' => 'actions');
+    $form['actions']['submit'] = array(
+        '#type'     => 'submit',
+        '#value'    => t('Save'),
+        '#weight'   => 5,
+        '#submit'   => array('wechat_configuration_submit'),
+    );
+
+    return $form;
+}
+
+/**
+ * @see wechat_configuration_add
+ * 保存表单数据
+ */
+function wechat_configuration_submit($form, &$form_state) {
+    $wechatconfig = $form_state['values']['baseinfo'] + (array) $form_state['wechatconfig'];
+    $wechatconfig = (object) $wechatconfig;
+    $wechatconfig->created = !empty($wechatconfig->created) ? $wechatconfig->created : REQUEST_TIME;
+    $wechatconfig->updated = REQUEST_TIME;
+    unset($wechatconfig->data_menu);
+    if (empty($wechatconfig->wid)) {
+        drupal_write_record('xwechat_configuration', $wechatconfig);
+    } else {
+        drupal_write_record('xwechat_configuration', $wechatconfig, 'wid');
+    }
+    if ($wechatconfig->wid) {
+        drupal_set_message(t('%title has been saved successfully.', array('%title'=>$wechatconfig->name)));
+        try {
+            $wechat = new WeChat($wechatconfig);
+            $wechat->getAccessToken();
+        } catch (Exception $e) {
+            drupal_set_message(t('But the configuration did not pass validation'), 'warning');
+        }
+        $form_state['redirect'] = 'admin/config/xwechat/config';
+    } else {
+        drupal_set_message(t('The post could not be saved.'), 'error');
+        $form_state['rebuild'] = true;
+    }
+}
+
+//显示星号
+function wechat_configuration_mask($string) {
+    $len = strlen($string);
+    if ($len < 4) { return $string; }
+    $num = floor($len*2/5);
+    $rep = str_repeat('*', $num);
+    $srt = floor($len/3) - 1;
+    return substr_replace($string, $rep, $srt, $num);
+}

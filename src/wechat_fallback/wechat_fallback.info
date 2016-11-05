@@ -1,0 +1,7 @@
+name        = X Wechat Fallback
+description = 微信回溯默认回复
+core        = 7.x
+package     = WeChat
+version     = 1.0.0
+
+dependencies[] = xwechat

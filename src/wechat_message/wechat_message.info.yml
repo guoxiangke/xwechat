@@ -1,0 +1,9 @@
+name: X Wechat Message
+type: module
+description: 微信消息历史纪录
+package: WeChat
+version: 1.0.0
+core: 8.x
+dependencies:
+    - xwechat
+    - wechat_configuration

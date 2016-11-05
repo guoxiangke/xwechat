@@ -1,0 +1,383 @@
+<?php
+
+/**
+ * @file
+ *
+ * WeChat Schema
+ */
+
+/*
+
+CREATE TABLE `xwechat_configuration` (
+	`wid` INT(11) NOT NULL AUTO_INCREMENT COMMENT '配置ID',
+	`name` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '名称',
+    `username` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '用户名',
+	`token` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'TOKEN',
+	`appid` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'APPID',
+	`appsecret` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'SECRET',
+	`aeskey` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'AESKEY',
+    `agentid` VARCHAR(64) NOT NULL DEFAULT '0' COMMENT '企业号应用ID',
+    `bundle` VARCHAR(32) NOT NULL DEFAULT 'wechat' COMMENT 'wechat:公众号 wechatcorp:企业号',
+	`created` INT(11) NOT NULL DEFAULT '0' COMMENT '创建时间',
+	`updated` INT(11) NOT NULL DEFAULT '0' COMMENT '修改时间',
+    `status` INT(10) NOT NULL DEFAULT '1' COMMENT '状态',
+	`data_menu` LONGTEXT NULL COMMENT '菜单数据',
+    `uid` INT(10) UNSIGNED NOT NULL DEFAULT '0' COMMENT 'user',
+	PRIMARY KEY (`wid`),
+	INDEX `appid` (`appid`)
+)
+COMMENT='公众号配置'
+ENGINE=InnoDB;
+
+CREATE TABLE `xwechat_user_group` (
+	`wid` INT(11) NOT NULL AUTO_INCREMENT COMMENT '配置ID',
+	`groupid` INT(11) NOT NULL DEFAULT '0' COMMENT '分组ID',
+	`groupname` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '分组名称',
+	`groupcount` INT(11) NOT NULL DEFAULT '0' COMMENT '数量',
+	INDEX `wid_groupid` (`wid`, `groupid`)
+)
+COMMENT='公众号用户分组'
+ENGINE=InnoDB;
+
+CREATE TABLE `xwechat_user` (
+    `uid` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `wid` INT(11) NOT NULL DEFAULT '0' COMMENT '配置ID',
+	`openid` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'OPENID',
+	`subscribe` INT(11) NOT NULL DEFAULT '1' COMMENT '是否关注 0没关注 1关注 2取消关注',
+	`nickname` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '昵称',
+	`sex` INT(11) NOT NULL DEFAULT '0' COMMENT '性别 1男2女0未知',
+	`language` VARCHAR(32) NOT NULL DEFAULT 'zh_CN ' COMMENT '语言',
+	`city` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '城市',
+	`province` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '省份',
+	`country` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '国家',
+	`headimgurl` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '头像',
+	`subscribe_time` INT(10) UNSIGNED NOT NULL DEFAULT '0' COMMENT '关注时间',
+	`unionid` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '公众号绑定',
+	`remark` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '备注',
+	`groupid` INT(11) NOT NULL DEFAULT '0' COMMENT '分组号',
+	`lng` FLOAT(10,7) NOT NULL DEFAULT '0.0000000' COMMENT '经度',
+	`lat` FLOAT(10,7) NOT NULL DEFAULT '0.0000000' COMMENT '纬度',
+	`zoom` INT(11) NOT NULL DEFAULT '12' COMMENT '缩放',
+	`created` INT(11) NOT NULL DEFAULT '0' COMMENT '创建时间',
+	`updated` INT(11) NOT NULL DEFAULT '0' COMMENT '修改时间',
+	`accessed` INT(11) NOT NULL DEFAULT '0' COMMENT '最后活跃时间',
+	PRIMARY KEY (`uid`),
+	UNIQUE INDEX `openid` (`openid`),
+	INDEX `wid` (`wid`),
+    INDEX `groupid` (`groupid`)
+)
+COMMENT='公众号关注的用户'
+COLLATE='utf8mb4_general_ci' #mysql5.5.3+
+ENGINE=InnoDB;
+
+*/
+
+//HOOK_schema
+function xwechat_schema() {
+    $schema['xwechat_configuration'] = array(
+        'description' => 'xwechat config',
+        'fields' => array(
+            'wid' => array(
+                'description'   => 'ID of config.',
+                'type'          => 'serial',
+                'unsigned'      => true,
+                'not null'      => true,
+            ),
+            'name' => array(
+                'description'   => 'name of wechat.',
+                'type'          => 'varchar',
+                'length'        => 255,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'username' => array(
+                'description'   => 'username.',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'token' => array(
+                'description'   => 'token of wechat.',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'appid' => array(
+                'description'   => 'appid of wechat.',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'appsecret' => array(
+                'description'   => 'appsecret of wechat.',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'aeskey' => array(
+                'description'   => 'aeskey of wechat.',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'agentid' => array(
+                'description'   => 'agent ID.',
+                'type'          => 'varchar',
+                'length'        => 64,
+                'not null'      => true,
+                'default'       => '0',
+            ),
+            'bundle' => array(
+                'description'   => 'wechatORwechatcorp',
+                'type'          => 'varchar',
+                'length'        => 64,
+                'not null'      => true,
+                'default'       => 'wechat',
+            ),
+            'created' => array(
+                'description'   => 'Created time of config.',
+                'type'          => 'int',
+                'unsigned'      => true,
+                'not null'      => true,
+                'default'       => 0,
+            ),
+            'updated' => array(
+                'description'   => 'Updated time of config.',
+                'type'          => 'int',
+                'unsigned'      => true,
+                'not null'      => true,
+                'default'       => 0,
+            ),
+            'status' => array(
+                'description'   => 'status',
+                'type'          => 'int',
+                'not null'      => true,
+                'default'       => 1,
+            ),
+            'data_menu' => array(
+                'description'   => 'Custom menu of wechat',
+                'type'          => 'text',
+                'size'          => 'big',
+                'serialize'     => true,
+            ),
+            'uid' => array(
+                'description'   => 'drupal uid.',
+                'type'          => 'int',
+                'unsigned'      => true,
+                'not null'      => true,
+                'default'       => 0,
+            ),
+        ),
+        'primary key' => array('wid'),
+        'indexes' => array(
+            'appid' => array('appid'),
+        ),
+    );
+
+    $schema['xwechat_user_group'] = array(
+        'description' => 'xwechat group of user',
+        'fields' => array(
+            'wid' => array(
+                'description'   => 'ID of config.',
+                'type'          => 'int',
+                'unsigned'      => true,
+                'not null'      => true,
+                'default'       => 0,
+            ),
+            'groupid' => array(
+                'description'   => 'Group id of wechat user.',
+                'type'          => 'int',
+                'default'       => 0,
+            ),
+            'groupname' => array(
+                'description'   => 'Group name of wechat user.',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'groupcount' => array(
+                'description'   => 'Group count of wechat user.',
+                'type'          => 'int',
+                'default'       => 0,
+            ),
+        ),
+        'indexes' => array(
+            'wid'     => array('wid'),
+            'groupid' => array('groupid'),      
+        ),
+    );
+
+    $schema['xwechat_user'] = array(
+        'description' => 'xwechat user',
+        'fields' => array(
+            'uid' => array(
+                'description'   => 'ID of user.',
+                'type'          => 'serial',
+                'unsigned'      => true,
+                'not null'      => true,
+            ),
+            'wid' => array(
+                'description'   => 'ID of config.',
+                'type'          => 'int',
+                'unsigned'      => true,
+                'not null'      => true,
+                'default'       => 0,
+            ),
+            'openid' => array(
+                'description'   => 'openid of user.',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'subscribe' => array(
+                'description'   => '0 not subscribe 1 subscribe 2 cancel subscribe',        
+                'type'          => 'int',
+                'not null'      => true,
+                'default'       => 1,
+            ),
+            'nickname' => array(
+                'description'   => 'nickname of user.',
+                'type'          => 'varchar',
+                'length'        => 255,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'sex' => array(
+                'description'   => '1 man 2 woman 0 unknown',
+                'type'          => 'int',
+                'not null'      => true,
+                'default'       => 0,
+            ),
+            'language' => array(
+                'description'   => 'language.',
+                'type'          => 'varchar',
+                'length'        => 32,
+                'not null'      => true,
+                'default'       => 'zh_CN',
+            ),
+            'city' => array(
+                'description'   => 'city.',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'province' => array(
+                'description'   => 'province.',
+                'type'          => 'varchar',
+                'length'        => 64,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'country' => array(
+                'description'   => 'country.',
+                'type'          => 'varchar',
+                'length'        => 64,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'headimgurl' => array(
+                'description'   => 'headimgurl.',
+                'type'          => 'varchar',
+                'length'        => 255,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'subscribe_time' => array(
+                'description'   => 'subscribe_time.',
+                'type'          => 'int',
+                'unsigned'      => true,
+                'not null'      => true,
+                'default'       => 0,
+            ),
+            'unionid' => array(
+                'description'   => 'unionid.',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'remark' => array(
+                'description'   => 'remark.',
+                'type'          => 'varchar',
+                'length'        => 255,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'groupid' => array(
+                'description'   => 'groupid',
+                'type'          => 'int',
+                'not null'      => true,
+                'default'       => 0,
+            ),
+            'lng' => array(
+                'description'   => 'Longitude',
+                'type'          => 'float',
+                'not null'      => true,
+                'precision'     => 10,
+                'scale'         => 7,
+                'default'       => '0',
+            ),
+            'lat' => array(
+                'description'   => 'Latitude',
+                'type'          => 'float',
+                'not null'      => true,
+                'precision'     => 10,
+                'scale'         => 7,
+                'default'       => '0',
+            ),
+            'zoom' => array(
+                'description'   => 'zoom',
+                'type'          => 'int',
+                'not null'      => true,
+                'default'       => 12,
+            ),
+            'created' => array(
+                'description'   => 'Created time of config.',
+                'type'          => 'int',
+                'unsigned'      => true,
+                'not null'      => true,
+                'default'       => 0,
+            ),
+            'updated' => array(
+                'description'   => 'Updated time of config.',
+                'type'          => 'int',
+                'unsigned'      => true,
+                'not null'      => true,
+                'default'       => 0,
+            ),
+            'accessed' => array(
+                'description'   => 'last accessed time of config.',
+                'type'          => 'int',
+                'unsigned'      => true,
+                'not null'      => true,
+                'default'       => 0,
+            ),
+        ),
+        'primary key' => array('uid'),
+        'indexes' => array(
+            'wid'     => array('wid'),
+            'groupid' => array('groupid'),      
+        ),
+        'unique keys' => array(
+            'openid' => array('openid'),
+        ),
+    );
+
+    $schema['variables'] = drupal_get_schema_unprocessed('system', 'variable');
+    $schema['variables']['description'] = 'Pyramid Variables.';  
+    
+    return $schema;
+}
+
+//HOOK_uninstall
+function xwechat_uninstall() {
+
+}

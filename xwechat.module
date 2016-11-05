@@ -1,0 +1,92 @@
+<?php
+
+/**
+ * @file
+ *
+ * WeChat For Drupal 7.x
+ */
+
+use Pyramid\Component\WeChat\WeChat;
+use Pyramid\Component\WeChat\Request;
+use Pyramid\Component\WeChat\Response;
+use Pyramid\Component\WeChat\WeChatCorp;
+
+/**
+ * HOOK_menu
+ */
+function xwechat_menu() {
+    $items['xwechat/%'] = array(
+        'title'             => 'WeChat',
+        'description'       => 'WeChat Handler',
+        'page callback'     => 'xwechat_handle',
+        'page arguments'    => array(1),
+        'access callback'   => true,
+        'type'              => MENU_CALLBACK,
+    );
+    $items['xwechatcorp/%'] = array(
+        'title'             => 'WeChatCorp',
+        'description'       => 'WeChatCorp Handler',
+        'page callback'     => 'xwechatcorp_handle',
+        'page arguments'    => array(1),
+        'access callback'   => true,
+        'type'              => MENU_CALLBACK,
+    );
+    $items['admin/config/xwechat'] = array(
+        'title'             => t('WeChat'),
+        'description'       => 'WeChat Main Menu.',
+        'position'          => 'left',
+        'weight'            => -22,
+        'page callback'     => 'system_admin_menu_block_page',
+        'access arguments'  => array('access administration pages'),
+        'file'              => 'system.admin.inc',
+        'file path'         => drupal_get_path('module', 'system'),
+        'route_name'        => 'xwechat_admin_index',
+    );
+
+    return $items;
+}
+
+/**
+ * 核心回调函数 @see xwechat_menu
+ *
+ * @newapi HOOK_wechat_request_ALTER
+ * @newapi HOOK_wechat_ALTER
+ * @newapi HOOK_wechat_response_ALTER
+ */
+function xwechat_handle($wid) {
+    $wechat  = new WeChat(xwechat_configuration_load($wid));
+    $request = Request::createFromGlobals();
+    drupal_alter('wechat', $wechat);
+    $response = $wechat->handle($request);
+    drupal_alter('wechat_request', $request);
+    drupal_alter('wechat_response', $response);
+    $response->send();
+}
+
+/**
+ * 核心回调函数 @see xwechat_menu
+ *
+ * @newapi HOOK_wechatcorp_request_ALTER
+ * @newapi HOOK_wechatcorp_ALTER
+ * @newapi HOOK_wechatcorp_response_ALTER
+ */
+function xwechatcorp_handle($wid) {
+    $wechat  = new WeChatCorp(xwechat_configuration_load($wid));
+    $request = Request::createFromGlobals();
+    drupal_alter('wechatcorp', $wechat);
+    $response = $wechat->handle($request);
+    drupal_alter('wechatcorp_request', $request);
+    drupal_alter('wechatcorp_response', $response);
+    $response->send();
+}
+
+//获取配置 @see xwechat_handle
+function xwechat_configuration_load($wid) {
+    return db_select('xwechat_configuration', 'c')
+                ->fields('c')
+                ->condition('wid', $wid)
+                ->execute()
+                ->fetchObject();
+}
+
+require_once __DIR__ . '/lib/Pyramid/Pyramid.php';

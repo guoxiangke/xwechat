@@ -1,0 +1,9 @@
+name: X Wechat Fallback
+type: module
+description: 微信回溯默认回复
+package: WeChat
+version: 1.0.0
+core: 8.x
+dependencies:
+    - xwechat
+    - wechat_configuration

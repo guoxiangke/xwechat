@@ -1,0 +1,6 @@
+name: X WeChat Core
+type: module
+description: WeChat Core Module.
+package: WeChat
+version: 1.0.0
+core: 8.x

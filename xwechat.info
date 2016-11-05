@@ -1,0 +1,6 @@
+name        = X WeChat Core
+description = WeChat Core Module.
+core        = 7.x
+package     = WeChat
+php         = 5.3
+version     = 1.0.0

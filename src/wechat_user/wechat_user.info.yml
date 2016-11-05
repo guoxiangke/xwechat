@@ -1,0 +1,9 @@
+name: X Wechat User
+type: module
+description: 微信关注用户管理
+package: WeChat
+version: 1.0.0
+core: 8.x
+dependencies:
+    - xwechat
+    - wechat_configuration

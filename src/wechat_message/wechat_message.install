@@ -1,0 +1,98 @@
+<?php
+
+/**
+ * @file
+ *
+ * WeChat Message Schema
+ */
+
+/*
+
+CREATE TABLE `xwechat_message` (
+    `id` INT(11) NOT NULL AUTO_INCREMENT COMMENT '自增主键',
+	`wid` INT(11) NOT NULL DEFAULT '0' COMMENT '配置ID',
+    `openid` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'OPENID',
+    `timestamp` INT(11) NOT NULL DEFAULT '0' COMMENT '时间',
+    `type` VARCHAR(128) NOT NULL DEFAULT '' COMMENT 'receive reply push',
+    `msgtype` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '消息类型',
+    `subtype` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '子类型',
+    `data` longtext null COMMENT '消息JSON体',
+	PRIMARY KEY (`id`),
+	INDEX `wid_id` (`wid`, `id`),
+    INDEX `openid_id` (`openid`, `id`)
+)
+COMMENT='公众号消息历史'
+COLLATE='utf8mb4_general_ci' #mysql5.5.3+
+ENGINE=InnoDB;
+
+*/
+
+//HOOK_schema
+function wechat_message_schema() {
+    $schema['xwechat_message'] = array(
+        'description' => 'xwechat message',
+        'fields' => array(
+            'id' => array(
+                'description'   => 'ID of Message.',
+                'type'          => 'serial',
+                'unsigned'      => true,
+                'not null'      => true,
+            ),
+            'wid' => array(
+                'description'   => 'WeChat WID.',
+                'type'          => 'int',
+                'unsigned'      => true,
+                'not null'      => true,
+                'default'       => 0,
+            ),
+            'openid' => array(
+                'description'   => 'openid of user.',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'timestamp' => array(
+                'description'   => 'Timestamp.',
+                'type'          => 'int',
+                'unsigned'      => true,
+                'not null'      => true,
+                'default'       => 0,
+            ),
+            'type' => array(
+                'description'   => 'receive reply push',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'msgtype' => array(
+                'description'   => 'MsgType',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'subtype' => array(
+                'description'   => 'WeChat lib type',
+                'type'          => 'varchar',
+                'length'        => 128,
+                'not null'      => true,
+                'default'       => '',
+            ),
+            'data' => array(
+                'description'   => 'message data',
+                'type'          => 'text',
+                'size'          => 'big',
+                'serialize'     => true,
+            ),
+        ),
+        'primary key' => array('id'),
+        'indexes' => array(
+            'wid_id' => array('wid', 'id'),
+            'openid_id' => array('openid', 'id'),
+        ),
+    );
+
+    return $schema;
+}

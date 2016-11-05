@@ -1,0 +1,222 @@
+<?php
+
+/**
+ * @file
+ *
+ * wechat_menu
+ */
+
+use Pyramid\Component\WeChat\WeChat;
+use Pyramid\Component\WeChat\Request;
+use Pyramid\Component\WeChat\Response;
+
+/**
+ * HOOK_menu
+ */
+function wechat_menu_menu() {
+    $items['admin/config/xwechat/%xwechat_configuration/menu'] = array(
+        'title'             => 'WeChat Menu',
+        'page callback'     => 'wechat_menu_config',
+        'page arguments'    => array(3),
+        'access arguments'  => array('config wechat menu'),
+    );
+
+    return $items;
+}
+
+/**
+ * HOOK_permission
+ */
+function wechat_menu_permission() {
+    $permissions['config wechat menu'] = array(
+        'title' => t('Config WeChat Menu'),
+    );
+
+    return $permissions;
+}
+
+/**
+ * HOOK_wechat_operation
+ */
+function wechat_menu_wechat_operation($links = array(), $config) {
+    $links['menu'] = array(
+        'title'      => t('Menu'),
+        'href'       => 'admin/config/xwechat/' . $config->wid . '/menu',
+        'attributes' => array('target'=>'_blank'),
+    );
+    
+    return $links;
+}
+
+/**
+ * @see wechat_menu_menu
+ * 菜单设置页
+ */
+function wechat_menu_config($config) {
+    $wechat = new WeChat($config);
+    try {
+        $menu   = $wechat->getMenu();
+    } catch (Exception $e) {
+        drupal_set_message($e->getMessage(), 'error');
+    }
+    $rows   = array();
+    $header = array(t('Name'),t('Type'),t('Url/Key'),t('Weight'));
+    drupal_add_tabledrag('wechatmenu', 'order', 'sibling', 'wechatmenu-weight');
+    drupal_add_tabledrag('wechatmenu', 'match', 'parent', 'wechatmenu-parent', 'wechatmenu-parent', 'wechatmenu-id', false);
+    drupal_add_tabledrag('wechatmenu', 'depth', 'group', 'wechatmenu-depth', null, null, false, 1);
+    if (!empty($menu['menu']['button'])) {
+        $rows = wechat_menu_build_table_item($menu['menu']['button']);
+    }
+    $count = count($rows);
+    $more  = min($count + 6, 16) - $count;
+    if ($more > 0) {
+        $rows = array_merge($rows, wechat_menu_build_table_item(array_fill(0,$more,array())));
+    }
+    $menus = theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id'=>'wechatmenu')));
+
+    return drupal_get_form('wechat_menu_form', $menus, $config);
+}
+
+/**
+ * @see wechat_menu_config
+ * 表单
+ */
+function wechat_menu_form($form, &$form_state, $menus, $config) {
+    if (!isset($form_state['wechatconfig'])) {
+        $form_state['wechatconfig'] = $config;
+    }
+    $form['#wechatconfig'] = $config;
+    $form['menus'] = array(
+        '#type'   => 'item',
+        '#markup' => $menus,
+    );
+    $form['actions'] = array('#type' => 'actions');
+    $form['actions']['submit'] = array(
+        '#type'     => 'submit',
+        '#value'    => t('Save'),
+        '#submit'   => array('wechat_menu_submit'),
+    );
+    
+    return $form;
+}
+
+/**
+ * @see wechat_menu_form
+ * 保存表单数据
+ */
+function wechat_menu_submit($form, &$form_state) {
+    $config = $form_state['wechatconfig'];
+    $values = $form_state['input'];
+    $menus  = array();
+    foreach ($values['names'] as $k => $name) {
+        $depth = $values['depth'][$k];
+        $type  = $values['types'][$k];
+        $value = $values['values'][$k];
+        if (empty($name) || ($depth>0 && ($type=='' || $value==''))) {
+            continue;
+        }
+        $menu  = array('name' => $name,'type' => strtolower($type));
+        if ($menu['type'] == 'view') {
+            $menu['url'] = $value;
+        } else {
+            $menu['key'] = $value;
+        }
+        if ($depth == 0) {
+            $menus[$k] = $menu;
+            $lastRoot = $k;
+        } elseif (isset($menus[$lastRoot])) {
+            $menus[$lastRoot]['sub_button'][] = $menu;
+        }
+    }
+    $menus = array_values($menus);
+    foreach ($menus as $k => $v) {
+        if (!empty($v['sub_button'])) {
+            unset($menus[$k]['type'], $menus[$k]['key']);
+        }
+    }
+    $data = array('button' => $menus);
+    db_update('xwechat_configuration')
+        ->fields(array('data_menu' => json_encode($data)))
+        ->condition('wid', $config->wid)
+        ->execute();
+    $wechat = new WeChat($config);
+    try {
+        $wechat->setMenu($data);
+        drupal_set_message(t('Menu has been updated.'));
+        $form_state['redirect'] = 'admin/config/xwechat/' . $config->wid . '/menu';
+    } catch (Exception $e) {
+        drupal_set_message($e->getMessage(), 'error');
+        $form_state['rebuild'] = true;
+    }
+}
+
+/**
+ * @see wechat_menu_config
+ * 生成表格数据
+ */
+function wechat_menu_build_table_item($items, $i=0, $depth = 0) {
+    static $types = array(
+        ''                  => '',
+        'click'             => '点击推事件 (click)',
+        'view'              => '跳转URL (view)',
+        'scancode_push'     => '扫码推事件 (scancode_push)',
+        'scancode_waitmsg'  => '扫码推事件且弹出提示 (scancode_waitmsg)',
+        'pic_sysphoto'      => '弹出系统拍照发图 (pic_sysphoto)',
+        'pic_photo_or_album' => '弹出拍照或者相册发图 (pic_photo_or_album)',
+        'pic_weixin'        => '弹出微信相册发图器 (pic_weixin)',
+        'location_select'   => '弹出地理位置选择器 (location_select)',
+        'media_id'          => '下发消息[除文本] (media_id)',
+        'view_limited'      => '跳转图文消息URL (view_limited)',
+    );
+    $rows = array();
+    foreach ($items as $v) {
+        $v['#weight'] = array(
+                    '#name'    => "weight[]",
+                    '#type'    => 'select',
+                    '#options' => range(0,25),
+                    '#value'   => $i,
+                    '#tree'    => 1,
+                    '#attributes' => array('class'=>array('wechatmenu-weight')),
+                );
+        $v['#parent'] = array(
+                    '#type'   => 'hidden',
+                    '#attributes' => array('class'=>array('wechatmenu-parent')),
+                );
+        $v['#depth'] = array(
+                    '#name'   => "depth[]",
+                    '#type'   => 'hidden',
+                    '#value'  => $depth,
+                    '#tree'   => 1,
+                    '#theme'  => 'hidden',
+                    '#attributes' => array('class'=>array('wechatmenu-depth')),
+                );
+        $v['#id'] = array(
+                    '#type'   => 'hidden',
+                    '#attributes' => array('class'=>array('wechatmenu-id')),
+                );
+        $v['#type'] = array(
+                    '#name'    => "types[]",
+                    '#type'    => 'select',
+                    '#options' => $types,
+                    '#value'   => (isset($v['type']) ? $v['type'] : ''),
+                    '#tree'    => 1,
+                    '#attributes' => array('class'=>array('form-text')),
+                );
+        $row   = array();
+        $row[] = ($depth ? theme('indentation', array('size' => $depth)) : '')
+                . "<input class='form-text' name='names[]' value='" . (isset($v['name']) ? $v['name'] : '') . "' />"
+                . drupal_render($v['#parent'])
+                . drupal_render($v['#id'])
+                . drupal_render($v['#depth']);
+        $row[] = drupal_render($v['#type']);
+        $row[] = "<input class='form-text' size='80' name='values[]' value='" . (isset($v['url']) ? $v['url'] : (isset($v['key']) ? $v['key'] : '')) . "' />";
+        $row[] = drupal_render($v['#weight']);
+        $rows[] = array('data' => $row, 'class' => array('draggable'));
+        $i++;
+        if (!empty($v['sub_button'])) {
+            $rows = array_merge($rows, wechat_menu_build_table_item($v['sub_button'], $i, 1));
+        }
+    }
+    
+    return $rows;
+}
